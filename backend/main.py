@@ -1,5 +1,10 @@
-from fastapi import FastAPI ,HTTPException
- 
+from fastapi import FastAPI ,HTTPException,status
+from pydantic import BaseModel
+
+class TaskCreate(BaseModel):
+        title: str | None = None
+        done: bool = False
+
 app = FastAPI()
 
 @app.get("/")
@@ -10,32 +15,27 @@ tasks=[
   {
     "id": 1,
     "title": "Database Migration",
-    "country": "United States",
-    "is_completed": False
+     "done": False
   },
   {
     "id": 2,
     "title": "User Authentication",
-    "country": "Germany",
-    "is_completed": True
+    "done": True
   },
   {
     "id": 3,
     "title": "API Documentation",
-    "country": "Japan",
-    "is_completed": True
+    "done": True
   },
   {
     "id": 4,
     "title": "Unit Testing",
-    "country": "Canada",
-    "is_completed": False
+    "done": False
   },
   {
     "id": 5,
     "title": "Dockerize Application",
-    "country": "Australia",
-    "is_completed": False
+    "done": False
   }
 ]
 
@@ -53,3 +53,21 @@ def get_task_by_id(id:int):
         if task["id"]==id:
             return task
     raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
+
+
+# @app.post("/tasks",status_code=201)
+# def create_task(title:str,done:bool=False):
+#     new_id = len(tasks)+1
+#     new_task = {"id":new_id,"title":title,"done":done}
+#     tasks.append(new_task)
+#     return new_task 
+     
+@app.post("/tasks",status_code=201)
+def create_task(task: TaskCreate):
+    if not task.title or not task.title.strip():
+        raise HTTPException(status_code=400,detail={"error":"Title is required"})
+    new_id = len(tasks) + 1
+    new_task = {"id": new_id, **task.model_dump()}
+    tasks.append(new_task)
+    return new_task
+    
