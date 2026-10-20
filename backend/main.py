@@ -11,7 +11,7 @@ class TaskUpdate(BaseModel):
 
 app = FastAPI()
 
-@app.get("/")
+@app.get("/")  
 def root():
     return {"message": "Hello Server"}
 
@@ -45,6 +45,9 @@ tasks=[
 
 @app.get("/tasks")
 def get_tasks():
+    """
+    Retrieve the full list of all saved tasks.
+    """
     return tasks
 
 @app.get("/health")
@@ -53,18 +56,20 @@ def health():
 
 @app.get("/tasks/{id}")
 def get_task_by_id(id:int):
+    """
+    Retrieve a specific task from the system by its unique ID.
+    """
     for task in tasks:
         if task["id"]==id:
             return task
     raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
 
-
-
-
- 
      
 @app.post("/tasks",status_code=201)
 def create_task(task: TaskCreate):
+    """
+    Create a new task with a title and completion status.
+    """
     if not task.title or not task.title.strip():
         raise HTTPException(status_code=400,detail={"error":"Title is required"})
     new_id = len(tasks) + 1
@@ -72,21 +77,27 @@ def create_task(task: TaskCreate):
     tasks.append(new_task)
     return new_task
 
-
-@app.put("/tasks/{id}",status_code=200)
+ 
+@app.put("/tasks/{id}",status_code=200 )
 def update_task(id:int,data:TaskUpdate):
-  update_task=data.model_dump(exclude_unset=True)
-  if not update_task:
+    """
+    Update a task's title and/or status by its unique ID.
+    """
+    update_task=data.model_dump(exclude_unset=True)
+    if not update_task:
       raise HTTPException(status_code=400,detail={"error":"request body is required"})
-  for task in tasks:
-     if task["id"]==id:
-      task.update(update_task)
-      return task
-  raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
+    for task in tasks:
+       if task["id"]==id:
+        task.update(update_task)
+        return task
+    raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
 
 
 @app.delete("/tasks/{id}",status_code=204, response_class=Response) 
 def delete_task(id: int):
+    """
+    Permanently delete a task from the system using its ID.
+    """
     for task in tasks: 
         if task["id"] == id:
             tasks.remove(task)
