@@ -49,3 +49,8 @@ HTTP/1.1 204 No Content
 date: Tue, 20 Oct 2026 06:02:54 GMT 
 server: uvicorn 
 ```
+
+
+## ⚠️ The Mortality Experiment
+
+After restarting the server, newly created tasks disappeared, and the original tasks reappeared. This happened because tasks are stored in an in-memory Python list, which resets when the server restarts.

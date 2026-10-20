@@ -1,5 +1,7 @@
 from fastapi import FastAPI ,HTTPException,status,Response
 from pydantic import BaseModel,Field
+import copy
+
 
 class TaskCreate(BaseModel):
         title: str | None = None
@@ -14,6 +16,8 @@ app = FastAPI()
 @app.get("/")  
 def root():
     return {"message": "Hello Server"}
+
+ 
 
 tasks=[
   {
@@ -30,25 +34,23 @@ tasks=[
     "id": 3,
     "title": "API Documentation",
     "done": True
-  },
-  {
-    "id": 4,
-    "title": "Unit Testing",
-    "done": False
-  },
-  {
-    "id": 5,
-    "title": "Dockerize Application",
-    "done": False
   }
+   
 ]
 
+BACKUP_TASKS = copy.deepcopy(tasks)
+
 @app.get("/tasks")
-def get_tasks():
+def get_tasks(done:bool | None=None ,search: str | None=None):
     """
     Retrieve the full list of all saved tasks.
     """
-    return tasks
+    tasks_list = tasks
+    if done is not None:
+        tasks_list = [task for task in tasks_list if task["done"] == done]
+    if search: 
+        tasks_list = [task for task in tasks_list if search.lower() in task.get("title", "").lower()]
+    return tasks_list
 
 @app.get("/health")
 def health():
@@ -104,4 +106,19 @@ def delete_task(id: int):
             return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(status_code=404, detail={"error": f"Task {id} not found"})
 
-    
+@app.get("/stats")
+def get_stats():
+    total=len(tasks)
+    done=len([task for task in tasks if task["done"]==True])
+    open=len([task for task in tasks if task["done"]==False])
+    return {"total":total,"done":done,"open":open}
+
+@app.post("/reset",status_code=200)
+def reset():
+    """
+    Reset the tasks list to its initial state.
+    """
+    global tasks
+    tasks=list(BACKUP_TASKS)
+
+    return {"message":"Tasks reset successfully"}
