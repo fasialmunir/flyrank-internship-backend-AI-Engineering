@@ -1,9 +1,13 @@
-from fastapi import FastAPI ,HTTPException,status
-from pydantic import BaseModel
+from fastapi import FastAPI ,HTTPException,status,Response
+from pydantic import BaseModel,Field
 
 class TaskCreate(BaseModel):
         title: str | None = None
         done: bool = False
+
+class TaskUpdate(BaseModel):
+        title: str | None =  None 
+        done: bool | None = None
 
 app = FastAPI()
 
@@ -55,12 +59,9 @@ def get_task_by_id(id:int):
     raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
 
 
-# @app.post("/tasks",status_code=201)
-# def create_task(title:str,done:bool=False):
-#     new_id = len(tasks)+1
-#     new_task = {"id":new_id,"title":title,"done":done}
-#     tasks.append(new_task)
-#     return new_task 
+
+
+ 
      
 @app.post("/tasks",status_code=201)
 def create_task(task: TaskCreate):
@@ -70,4 +71,26 @@ def create_task(task: TaskCreate):
     new_task = {"id": new_id, **task.model_dump()}
     tasks.append(new_task)
     return new_task
+
+
+@app.put("/tasks/{id}",status_code=200)
+def update_task(id:int,data:TaskUpdate):
+  update_task=data.model_dump(exclude_unset=True)
+  if not update_task:
+      raise HTTPException(status_code=400,detail={"error":"request body is required"})
+  for task in tasks:
+     if task["id"]==id:
+      task.update(update_task)
+      return task
+  raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
+
+
+@app.delete("/tasks/{id}",status_code=204, response_class=Response) 
+def delete_task(id: int):
+    for task in tasks: 
+        if task["id"] == id:
+            tasks.remove(task)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status_code=404, detail={"error": f"Task {id} not found"})
+
     
