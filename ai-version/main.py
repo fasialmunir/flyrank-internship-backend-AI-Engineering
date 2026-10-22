@@ -1,43 +1,35 @@
-from typing import Any
-
-from fastapi import FastAPI, Body, Request, Response
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 app = FastAPI()
 
-# Our data: a list of dictionaries
+# Data stored in a list of dictionaries
 tasks = [
     {"id": 1, "title": "Learn FastAPI", "done": False},
-    {"id": 2, "title": "Complete assignment", "done": False},
+    {"id": 2, "title": "Complete assignment", "done": False}
 ]
 
-next_id = 3
+
+# Request body for POST
+class TaskCreate(BaseModel):
+    title: str = ""
+    done: bool = False
 
 
-# Handle malformed JSON and other request validation errors
-@app.exception_handler(RequestValidationError)
-async def validation_error(request: Request, exc: RequestValidationError):
-    if request.method == "POST":
-        status = 404
-    elif request.method == "PUT":
-        status = 401
-    else:
-        status = 422
-
-    return JSONResponse(
-        status_code=status,
-        content={"error": "Invalid request. Check the JSON body and task id."},
-    )
+# Request body for PUT
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    done: bool | None = None
 
 
-# 1. Return all tasks
+# 1. Get all tasks
 @app.get("/tasks")
 def get_tasks():
     return tasks
 
 
-# 2. Return one task
+# 2. Get a task by ID
 @app.get("/tasks/{id}")
 def get_task(id: int):
     for task in tasks:
@@ -46,87 +38,63 @@ def get_task(id: int):
 
     return JSONResponse(
         status_code=404,
-        content={"error": f"task {id} no found"},
+        content={"error": f"task {id} no found"}
     )
 
 
 # 3. Create a task
 @app.post("/tasks", status_code=201)
-def create_task(data: Any = Body(default=None)):
-    global next_id
+def create_task(data: TaskCreate):
 
-    if not isinstance(data, dict):
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Body must be a JSON object containing a title"},
+    if not data.title.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="title is required and cannot be empty"
         )
 
-    title = data.get("title")
-
-    if not isinstance(title, str) or not title.strip():
-        return JSONResponse(
-            status_code=404,
-            content={"error": "title is required and must be non-empty text"},
-        )
+    # Highest existing ID + 1; starts at 1 if the list is empty
+    new_id = max((task["id"] for task in tasks), default=0) + 1
 
     new_task = {
-        "id": next_id,
-        "title": title.strip(),
-        "done": False,
+        "id": new_id,
+        "title": data.title.strip(),
+        "done": data.done
     }
 
     tasks.append(new_task)
-    next_id += 1
-
     return new_task
 
 
 # 4. Update title and/or done
 @app.put("/tasks/{id}")
-def update_task(id: int, data: Any = Body(default=None)):
+def update_task(id: int, data: TaskUpdate):
+
     for task in tasks:
         if task["id"] == id:
 
-            if not isinstance(data, dict) or not data:
-                return JSONResponse(
+            if data.title is None and data.done is None:
+                raise HTTPException(
                     status_code=401,
-                    content={"error": "Provide title and/or done"},
+                    detail="Provide title and/or done"
                 )
 
-            # Only title and done can be updated
-            if any(key not in ("title", "done") for key in data):
-                return JSONResponse(
-                    status_code=401,
-                    content={"error": "Only title and done are allowed"},
-                )
-
-            if "title" in data:
-                title = data["title"]
-
-                if not isinstance(title, str) or not title.strip():
-                    return JSONResponse(
+            if data.title is not None:
+                if not data.title.strip():
+                    raise HTTPException(
                         status_code=401,
-                        content={"error": "title must be non-empty text"},
+                        detail="title cannot be empty"
                     )
 
-            if "done" in data and not isinstance(data["done"], bool):
-                return JSONResponse(
-                    status_code=401,
-                    content={"error": "done must be true or false"},
-                )
+                task["title"] = data.title.strip()
 
-            # Update only after all checks pass
-            if "title" in data:
-                task["title"] = data["title"].strip()
-
-            if "done" in data:
-                task["done"] = data["done"]
+            if data.done is not None:
+                task["done"] = data.done
 
             return task
 
-    return JSONResponse(
+    raise HTTPException(
         status_code=404,
-        content={"error": f"task {id} no found"},
+        detail=f"task {id} no found"
     )
 
 
@@ -140,5 +108,5 @@ def delete_task(id: int):
 
     return JSONResponse(
         status_code=404,
-        content={"error": f"task {id} no found"},
+        content={"error": f"task {id} no found"}
     )
