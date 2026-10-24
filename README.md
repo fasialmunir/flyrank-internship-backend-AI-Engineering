@@ -186,3 +186,13 @@ I identified 404 instead of 400 for an invalid POST title as a mistake in my fir
 ### What I learned:
 
 I need to describe requirements clearly and check the generated code myself. Working endpoints alone do not guarantee that the code matches my intended behavior or is easy for me to understand.
+
+ 
+
+## Stage 4: Explored SQLite
+
+#### SQL query:
+
+SELECT * FROM tasks WHERE done = 1;
+
+Result: This query returned all tasks marked as completed (done = 1) in the SQLite database. The same results were visible through the FastAPI GET /tasks endpoint when using the appropriate filter.
