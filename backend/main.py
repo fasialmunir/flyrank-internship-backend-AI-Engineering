@@ -82,4 +82,17 @@ def get_task_by_id(id:int):
         task = conn.execute("SELECT * FROM tasks WHERE id = ?",(id,)).fetchone()
         if task is None:
             raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
-        return dict(task)        
+        return dict(task)   
+
+@app.post('/tasks',status_code=201)
+def create_task(task: TaskCreate): 
+    with get_db() as conn:
+        if not task.title or not task.title.strip():
+            raise HTTPException(status_code=400, detail= {"error":"Title is required"})
+        cursor = conn.execute(
+            "INSERT INTO tasks (title, done) VALUES (?, ?)",
+            (task.title, task.done)
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+        return {"id": new_id, **task.dict()}
