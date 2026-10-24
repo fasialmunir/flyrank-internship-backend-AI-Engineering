@@ -196,3 +196,46 @@ I need to describe requirements clearly and check the generated code myself. Wor
 SELECT * FROM tasks WHERE done = 1;
 
 Result: This query returned all tasks marked as completed (done = 1) in the SQLite database. The same results were visible through the FastAPI GET /tasks endpoint when using the appropriate filter.
+
+
+## SQLite database
+
+### Why SQLite was chosen
+
+SQLite stores the database in a single file and does not require a separate database server. It needs no manual database-service setup and keeps saved tasks after the application restarts. This makes it suitable for this small learning project.
+
+### Database location and startup
+
+The database file is `tasks.db` in the project root. Run the application from that folder using this single startup command:
+
+```bash
+uvicorn main:app --reload
+```
+
+The required startup behavior is to create `tasks.db`, create the `tasks` table, and insert the three example tasks automatically when initializing a fresh database. Existing data should remain intact on later restarts, without adding duplicate seed tasks. No manual table creation or SQL import should be needed.
+
+The database file tasks.db is excluded from Git through .gitignore. Each person who clones the project gets a fresh database when they start the application.
+
+### Database screenshot
+
+The following screenshot shows the database opened in DB Browser for SQLite:
+
+![Tasks database opened in DB Browser for SQLite](<./images/DB Browser.png>)
+
+## Stage 4: Exploring SQLite
+
+I ran this query to retrieve completed tasks:
+
+```sql
+SELECT * FROM tasks WHERE done = 1;
+```
+
+`SELECT *` returns all columns, `FROM tasks` selects the tasks table, and `WHERE done = 1` keeps only completed tasks.
+
+The query returned the tasks marked as completed in the database.
+
+![Completed tasks SQL query and results](<./images/SQL query.png>)
+
+ 
+
+ 
