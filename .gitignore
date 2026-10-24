@@ -1,2 +1,25 @@
+# --- Python Junk ---
 __pycache__/
 *.pyc
+# --- Operating System Junk ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+tasks.db
+
+# --- Common Editor & IDE Files ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# --- General Log and Temp Files ---
+*.log
+*.tmp
+*.bak
