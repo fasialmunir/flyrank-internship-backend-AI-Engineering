@@ -73,4 +73,13 @@ def get_tasks():
         tasks=[dict(row) for row in rows]
         return tasks     
 
- 
+@app.get("/tasks/{id}")
+def get_task_by_id(id:int):
+    """
+    Retrieve a specific task from the system by its unique ID.
+    """
+    with get_db() as conn:
+        task = conn.execute("SELECT * FROM tasks WHERE id = ?",(id,)).fetchone()
+        if task is None:
+            raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
+        return dict(task)        
