@@ -237,5 +237,25 @@ The query returned the tasks marked as completed in the database.
 ![Completed tasks SQL query and results](<./images/SQL query.png>)
 
  
+###Extra Feature: Task Statistics
+
+Added GET /stats to calculate the total, completed, and pending task counts directly in SQLite using SQL aggregate functions.
+
+Example request:
+
+GET /stats
+
+
+Example response:
+
+{
+  "total": 4,
+  "done": 2,
+  "open": 2
+}
+
+
+This feature demonstrates how SQL can calculate statistics efficiently without fetching every task into Python first.
+ 
 
  

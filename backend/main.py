@@ -101,26 +101,6 @@ def create_task(task: TaskCreate):
         return {"id": new_id, **task.dict()}
 
 
-# @app.put("/tasks/{id}",status_code=200 )
-# def update_task(id:int,task:TaskUpdate):
-#     """
-#     Update a task's title and/or status by its unique ID.
-#     """
-#     update_task=task.model_dump(exclude_unset=True)
-#     if not update_task:  
-#       raise HTTPException (status_code=400,detail={"error":"body is required"})
-#     with  get_db() as conn:
-#         cursor=conn.execute("""UPDATE tasks SET title =COALESCE(?,title), done=COALESCE(?,done)
-#                                    WHERE id =?
-#         """,(task.title,task.done,id))
-#         conn.commit()
-#         if  cursor.rowcount==0:
-#             raise HTTPException(
-#                 status_code=404,
-#                 detail={"error":f"task {id} not found"}
-#             )
-#         return get_task_by_id(id)
-
 
  
 @app.put("/tasks/{id}",status_code=200 )
@@ -154,5 +134,20 @@ def delete_task(id:int):
         conn.commit()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
         if cursor.rowcount==0:
-            raise HTTPException(status_code=404,detail={"error":f"task {id} not found"})  
+            raise HTTPException(status_code=404,detail={"error":f"task {id} not found"})              
+
           
+@app.get("/stats")
+def get_stats():
+    """
+    Retrieve statistics about the tasks in the system.
+    """
+    with get_db() as conn:
+       query="""SELECT  COUNT(*) from tasks"""
+       cursor=conn.execute(query).fetchone()
+       total=cursor["COUNT(*)"]
+       query="""SELECT COUNT(*) FROM tasks WHERE done = 1"""
+       cursor=conn.execute(query).fetchone()
+       done=cursor["COUNT(*)"]
+       open=total-done
+       return {"total":total,"done":done,"open":open}
