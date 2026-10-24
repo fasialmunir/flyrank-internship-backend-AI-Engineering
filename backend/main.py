@@ -86,6 +86,9 @@ def get_task_by_id(id:int):
 
 @app.post('/tasks',status_code=201)
 def create_task(task: TaskCreate): 
+    """
+    Create a new task with a title and completion status.
+    """
     with get_db() as conn:
         if not task.title or not task.title.strip():
             raise HTTPException(status_code=400, detail= {"error":"Title is required"})
@@ -96,3 +99,60 @@ def create_task(task: TaskCreate):
         conn.commit()
         new_id = cursor.lastrowid
         return {"id": new_id, **task.dict()}
+
+
+# @app.put("/tasks/{id}",status_code=200 )
+# def update_task(id:int,task:TaskUpdate):
+#     """
+#     Update a task's title and/or status by its unique ID.
+#     """
+#     update_task=task.model_dump(exclude_unset=True)
+#     if not update_task:  
+#       raise HTTPException (status_code=400,detail={"error":"body is required"})
+#     with  get_db() as conn:
+#         cursor=conn.execute("""UPDATE tasks SET title =COALESCE(?,title), done=COALESCE(?,done)
+#                                    WHERE id =?
+#         """,(task.title,task.done,id))
+#         conn.commit()
+#         if  cursor.rowcount==0:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail={"error":f"task {id} not found"}
+#             )
+#         return get_task_by_id(id)
+
+
+ 
+@app.put("/tasks/{id}",status_code=200 )
+def update_task(id:int,task:TaskUpdate):
+    """
+    Update a task's title and/or status by its unique ID.
+    """
+    update_task=task.model_dump(exclude_unset=True)
+    if not update_task:  
+      raise HTTPException (status_code=400,detail={"error":"body is required"})
+    with  get_db() as conn:
+        query=""" UPDATE tasks SET title = COALESCE (?,title),done=COALESCE(?,done)
+                        WHERE id=? """
+        cursor=conn.execute(query,(task.title,task.done,id))
+        conn.commit()
+        if cursor.rowcount==0:
+            raise HTTPException(status_code=404,detail={"error":f"task {id} not found"})  
+        return get_task_by_id(id)     
+
+        
+
+ 
+@app.delete("/tasks/{id}",status_code=204,response_class=Response)
+def delete_task(id:int):
+    """
+    Permanently delete a task from the system using its ID.
+    """
+    with get_db() as conn:
+        query="""delete from tasks where id=?"""
+        cursor=conn.execute(query,(id,))
+        conn.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        if cursor.rowcount==0:
+            raise HTTPException(status_code=404,detail={"error":f"task {id} not found"})  
+          
