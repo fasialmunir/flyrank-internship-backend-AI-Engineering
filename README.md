@@ -363,7 +363,7 @@ SELECT * FROM tasks WHERE done = 1;
 
 The query returns all columns from rows where the task is marked as completed.
 
-![SQL query showing completed tasks](<./images/SQL query.png>)
+![SQL query showing completed tasks](<./images/SQL query.png>) ^rqaqoi
 
 ### Extra feature: Task statistics
 
@@ -481,3 +481,19 @@ We have keept the AI implementation in `ai-version/`folder. We have Preserve the
 #### What I learned
 
 Clear instructions help AI generate the intended implementation. Reviewing code means checking it against the actual requirements, understanding its decisions, and recording real differences and test results accurately.
+
+
+## Assignment 3: Containerize your stack
+
+### stage 0: commands
+commands that I ran at stage 0:
+```bash
+docker run --name taskdb -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tasks -p 5432:5432 -v taskdata18:/var/lib/postgresql -d postgres:18 
+
+ docker exec -it taskdb psql -U postgres -d tasks
+ \dt
+ \q
+    
+
+
+``` 
