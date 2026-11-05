@@ -7,7 +7,7 @@ from psycopg.rows import dict_row
 
 BASE_DIR = Path(__file__).resolve().parent
 
-load_dotenv(BASE_DIR / ".env", override=True)
+load_dotenv(BASE_DIR / ".env")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
