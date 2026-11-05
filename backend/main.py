@@ -55,11 +55,11 @@ def create_task(task: TaskCreate):
         if not task.title or not task.title.strip():
             raise HTTPException(status_code=400, detail= {"error":"Title is required"})
         cursor = conn.execute(
-            "INSERT INTO tasks (title, done) VALUES (?, ?)",
+            "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id",
             (task.title, task.done)
         )
         conn.commit()
-        new_id = cursor.lastrowid
+        new_id = cursor.fetchone()["id"]
         return {"id": new_id, **task.dict()}
 
 
@@ -74,8 +74,8 @@ def update_task(id:int,task:TaskUpdate):
     if not update_task:  
       raise HTTPException (status_code=400,detail={"error":"body is required"})
     with  get_db() as conn:
-        query=""" UPDATE tasks SET title = COALESCE (?,title),done=COALESCE(?,done)
-                        WHERE id=? """
+        query=""" UPDATE tasks SET title = COALESCE (%s,title),done=COALESCE(%s,done)
+                        WHERE id=%s"""
         cursor=conn.execute(query,(task.title,task.done,id))
         conn.commit()
         if cursor.rowcount==0:
@@ -91,10 +91,9 @@ def delete_task(id:int):
     Permanently delete a task from the system using its ID.
     """
     with get_db() as conn:
-        query="""delete from tasks where id=?"""
+        query="""delete from tasks where id=%s"""
         cursor=conn.execute(query,(id,))
         conn.commit()
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
         if cursor.rowcount==0:
             raise HTTPException(status_code=404,detail={"error":f"task {id} not found"})              
 
