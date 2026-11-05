@@ -41,7 +41,7 @@ def get_task_by_id(id:int):
     Retrieve a specific task from the system by its unique ID.
     """
     with get_db() as conn:
-        task = conn.execute("SELECT * FROM tasks WHERE id = ?",(id,)).fetchone()
+        task = conn.execute("SELECT * FROM tasks WHERE id = %s", (id,)).fetchone() 
         if task is None:
             raise HTTPException(status_code=404,detail= {"error":f"Task {id} not found"})  
         return dict(task)   
