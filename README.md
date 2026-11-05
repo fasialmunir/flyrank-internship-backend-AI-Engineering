@@ -497,3 +497,339 @@ docker run --name taskdb -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tasks -p 5432:5
 
 
 ``` 
+
+###  Stage 5: one-command stack + doc
+
+A RESTful Task Management API built with **Python**, **FastAPI**, **PostgreSQL 18**, **Psycopg 3**, and **Docker Compose**.
+
+This project demonstrates how to build a backend application connected to a real PostgreSQL database, containerize the application and database, and run the entire stack with a single command.
+
+## Features
+
+- REST API built with FastAPI
+- PostgreSQL 18 database
+- Database connectivity using Psycopg 3
+- Centralized database operations in `repository.py`
+- Parameterized SQL queries
+- Automatic database table initialization
+- Automatic initial task seeding
+- Dockerized FastAPI application
+- Docker Compose for managing the entire stack
+- Persistent PostgreSQL storage using Docker volumes
+- Environment-based database configuration
+- Interactive Swagger API documentation
+
+## Tech Stack
+
+| Technology | Purpose |
+| :--- | :--- |
+| Python | Backend programming language |
+| FastAPI | REST API framework |
+| PostgreSQL 18 | Relational database |
+| Psycopg 3 | PostgreSQL database driver |
+| Docker | Application containerization |
+| Docker Compose | Running API and database together |
+| Uvicorn | ASGI application server |
+| python-dotenv | Environment variable loading |
+
+## Project Structure
+
+```text
+flyrank-internship-backend-AI-Engineering/
+│
+├── main.py
+├── repository.py
+├── requirements.txt
+│
+├── Dockerfile
+├── compose.yaml
+├── .dockerignore
+├── .gitignore
+│
+├── .env
+├── .env.example
+│
+├── images/
+│ └── database.png
+│
+└── README.md
+```
+
+## Requirements
+
+Before starting, install:
+
+- Docker Desktop
+- Git
+
+You do not need to install PostgreSQL separately. Docker Compose runs PostgreSQL for this application.
+
+## Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone YOUR_GITHUB_REPOSITORY_URL
+```
+
+Navigate into the project:
+
+```bash
+cd flyrank-internship-backend-AI-Engineering
+```
+
+### 2. Configure Environment Variables
+
+Create your local `.env` file by copying `.env.example`.
+
+**Windows PowerShell:**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+The `.env.example` file contains:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=dev
+POSTGRES_DB=tasks
+```
+
+You can change the password in `.env` to your own local development password.
+
+**Important:** Never commit your private `.env` file to GitHub.
+
+### 3. Start the Entire Application
+
+Run this single command from the project root:
+
+```bash
+docker compose up --build
+```
+
+Docker Compose automatically:
+
+- Builds the FastAPI application image.
+- Creates the PostgreSQL 18 container.
+- Creates the persistent database volume.
+- Initializes the PostgreSQL database.
+- Waits for PostgreSQL to become healthy.
+- Starts the FastAPI application.
+- Connects FastAPI to PostgreSQL.
+
+No manual database installation or table creation is required.
+
+## Application URLs
+
+Once the containers are running:
+
+| Service | URL |
+| :--- | :--- |
+| FastAPI application | http://localhost:3000 |
+| Swagger UI | http://localhost:3000/docs |
+| ReDoc | http://localhost:3000/redoc |
+| OpenAPI JSON | http://localhost:3000/openapi.json |
+
+## API Endpoints
+
+The following endpoints cover the implemented read operations.
+
+| HTTP Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| GET | `/tasks` | Retrieve all tasks |
+| GET | `/tasks/{task_id}` | Retrieve a specific task by ID |
+
+See Swagger UI for the available API operations.
+
+### Example 1: Get All Tasks
+
+**Request:**
+
+```bash
+curl -i http://localhost:3000/tasks
+```
+
+**Example Response:**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+```
+
+```json
+[
+{
+"id": 1,
+"title": "Learn FastAPI",
+"done": false
+},
+{
+"id": 2,
+"title": "Learn PostgreSQL",
+"done": true
+}
+]
+```
+
+The returned records come directly from PostgreSQL. Actual results depend on the database contents.
+
+### Example 2: Get a Specific Task
+
+**Request:**
+
+```bash
+curl -i http://localhost:3000/tasks/1
+```
+
+**Expected Response:** HTTP `200 OK` with the matching task.
+
+### Example 3: Get a Task That Does Not Exist
+
+**Request:**
+
+```bash
+curl -i http://localhost:3000/tasks/999
+```
+
+**Expected Response:**
+
+```http
+HTTP/1.1 404 Not Found
+```
+
+```json
+{
+"error": "Task not found"
+}
+```
+
+## Database Configuration
+
+The API connects to PostgreSQL using the following connection structure inside Docker Compose:
+
+```text
+postgresql://postgres:dev@db:5432/tasks
+```
+
+| Setting | Value |
+| :--- | :--- |
+| Database | `tasks` |
+| Username | `postgres` |
+| Password | Configured in `.env` |
+| Database host | `db` |
+| Database port | `5432` |
+
+**Important:** The API uses `db:5432` because Docker Compose provides an internal network between the API and database containers.
+
+The Windows host port does not need to be the same as the internal PostgreSQL port.
+
+## Database Verification
+
+You can inspect your PostgreSQL database directly from PowerShell.
+
+### 1. Open the PostgreSQL Terminal
+
+```powershell
+docker compose exec db psql -U postgres -d tasks
+```
+
+### 2. List Database Tables
+
+```sql
+\dt
+```
+
+### 3. View All Tasks
+
+```sql
+SELECT * FROM tasks;
+```
+
+### 4. View Table Structure
+
+```sql
+\d tasks
+```
+
+### 5. Exit PostgreSQL
+
+```sql
+\q
+```
+
+## Database Screenshot
+
+The following screenshot demonstrates the PostgreSQL database, its tasks table, and stored records.
+
+![PostgreSQL database showing the tasks table and records](./images/database.png)
+
+## Database Persistence
+
+This project uses a named Docker volume:
+
+```yaml
+volumes:
+taskdata:
+```
+
+PostgreSQL stores its data in this volume.
+
+To stop the application:
+
+```bash
+docker compose down
+```
+
+To start it again:
+
+```bash
+docker compose up
+```
+
+Previously created tasks remain available because database storage is independent of the container lifecycle.
+
+**Note:** Avoid `docker compose down -v` when you want to preserve database records because it removes the Compose-managed volume.
+
+## Stopping the Application
+
+```bash
+docker compose down
+```
+
+
+
+## Running the Project from a Fresh Clone
+
+A new developer can run the complete application using these steps:
+
+### 1. Clone the Repository
+
+```bash
+git clone YOUR_GITHUB_REPOSITORY_URL
+cd flyrank-internship-backend-AI-Engineering
+```
+
+### 2. Create the Environment File
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### 3. Start Everything
+
+```bash
+docker compose up --build
+```
+
+### 4. Access the API
+
+Open the following URL in your browser:
+
+```text
+http://localhost:3000/docs
+```
+
+The application and PostgreSQL database are started together without manual database setup.
+
+ 

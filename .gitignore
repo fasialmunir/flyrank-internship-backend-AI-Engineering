@@ -23,6 +23,8 @@ tasks.db
 *.log
 *.tmp
 *.bak
-
+.venv/
+venv/
+env
 .env
 node_modules/
