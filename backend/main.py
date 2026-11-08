@@ -3,6 +3,7 @@ from pydantic import BaseModel,Field
 import psycopg
 import sqlite3
 from repository import get_db, init_db, seed_tasks
+from supabase_client import supabase
 
 app=FastAPI()
 
