@@ -1,15 +1,23 @@
 from fastapi import FastAPI ,HTTPException,status,Response
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field 
 import psycopg
 import sqlite3
 from repository import get_db, init_db, seed_tasks
 from supabase_client import supabase
+from fastapi.responses import JSONResponse
+# from gotrue.errors import AuthApiError
+from supabase_auth.errors import AuthApiError
+
 
 app=FastAPI()
 
 class TaskCreate(BaseModel):
     title: str
     done: bool = False
+
+class AuthRequest(BaseModel):
+    email: str | None= None
+    password: str | None= None
 
 class TaskUpdate(BaseModel):
     title: str | None = None 
@@ -28,6 +36,66 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status":"ok"} 
+
+
+
+@app.post("/auth/signup", status_code=201)
+def signup(auth: AuthRequest):
+
+    # Validate email and password
+    if not auth.email or not auth.password:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Email and password are required"}
+        )
+
+    try:
+        # Register user with Supabase
+        response = supabase.auth.sign_up({
+            "email": auth.email,
+            "password": auth.password
+        })
+
+        # Return the registered user
+        return JSONResponse(
+            status_code=201,
+            content=response.user.model_dump(mode="json")
+        )
+
+    except AuthApiError as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)}
+        )
+
+@app.post("/auth/login", status_code=200)
+def login(auth: AuthRequest):
+
+    # Validate email and password
+    if not auth.email or not auth.password:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "Email and password are required"}
+        )
+
+    try:
+        # Authenticate user with Supabase
+        response = supabase.auth.sign_in_with_password({
+            "email": auth.email,
+            "password": auth.password
+        })
+
+        # Return access and refresh tokens
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token
+        }
+
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail={"error": "Invalid login credentials"}
+        )
 
 @app.get("/tasks")
 def get_tasks():
