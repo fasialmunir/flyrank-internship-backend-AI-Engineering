@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -25,3 +26,5 @@ supabase: Client = create_client(
     SUPABASE_URL,
     SUPABASE_KEY
 )
+
+security = HTTPBearer(auto_error=False)

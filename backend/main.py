@@ -1,13 +1,14 @@
-from fastapi import FastAPI ,HTTPException,status,Response,Header
+from fastapi import FastAPI ,HTTPException,status,Response,Header,Depends
 from pydantic import BaseModel,Field 
 import psycopg
 import sqlite3
 from repository import get_db, init_db, seed_tasks
 from supabase_client import supabase
 from fastapi.responses import JSONResponse
-# from gotrue.errors import AuthApiError
 from supabase_auth.errors import AuthApiError
-
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from supabase_client import security
 
 app=FastAPI()
 
@@ -102,22 +103,45 @@ def login(auth: AuthRequest):
 def public_info():
     return {"message": "Welcome stranger! This info is public."}
 
-@app.get("/protected/profile", status_code=200)
-def protected_profile(authrization: str = Header(None)):    
-    # Check Authorization header
-    if not authrization or not authrization.startswith("Bearer "):
+@app.get("/protected/profile")
+def protected_profile(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+
+    # Check whether access token is provided
+    if not credentials or not credentials.credentials:
         return JSONResponse(
             status_code=401,
             content={"error": "Access token required"}
         )
-    # Extract access token from header
-    token =authrization.split("",1)[1].strip()
+
+    # Extract access token
+    token = credentials.credentials.strip()
+
     if not token:
         return JSONResponse(
             status_code=401,
             content={"error": "Access token required"}
         )
-    return {"message": "Token received successfully."}
+
+    try:
+        # Verify access token with Supabase
+        response = supabase.auth.get_user(token)
+
+        user = response.user
+
+        # Return safe user metadata
+        return {
+            "id": user.id,
+            "email": user.email,
+            "created_at": user.created_at
+        }
+
+    except AuthApiError:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Invalid or expired token"}
+        )
 
 @app.get("/tasks")
 def get_tasks():
