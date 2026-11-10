@@ -1,4 +1,4 @@
-from fastapi import FastAPI ,HTTPException,status,Response
+from fastapi import FastAPI ,HTTPException,status,Response,Header
 from pydantic import BaseModel,Field 
 import psycopg
 import sqlite3
@@ -96,6 +96,28 @@ def login(auth: AuthRequest):
             status_code=401,
             detail={"error": "Invalid login credentials"}
         )
+
+
+@app.get("/public/info", status_code=200)
+def public_info():
+    return {"message": "Welcome stranger! This info is public."}
+
+@app.get("/protected/profile", status_code=200)
+def protected_profile(authrization: str = Header(None)):    
+    # Check Authorization header
+    if not authrization or not authrization.startswith("Bearer "):
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Access token required"}
+        )
+    # Extract access token from header
+    token =authrization.split("",1)[1].strip()
+    if not token:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Access token required"}
+        )
+    return {"message": "Token received successfully."}
 
 @app.get("/tasks")
 def get_tasks():
