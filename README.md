@@ -832,4 +832,116 @@ http://localhost:3000/docs
 
 The application and PostgreSQL database are started together without manual database setup.
 
- 
+## Assignment 4: Auth · Login & Protect
+
+A backend authentication project built with Python, FastAPI, Supabase Authentication, and PostgreSQL/SQLite.
+
+This project demonstrates user registration, login, JWT access-token verification, protected API routes, reusable authentication dependencies, logout functionality, and interactive API documentation using Swagger UI.
+
+### Technologies Used
+
+| Technology | Purpose |
+|---|---|
+| Python | Backend programming language |
+| FastAPI | REST API framework |
+| Supabase Authentication | User registration and login |
+| PostgreSQL / SQLite | Database storage |
+| Pydantic | Request data validation |
+| HTTP Bearer Authentication | JWT token authentication |
+| Swagger UI | Interactive API documentation |
+| Uvicorn | ASGI application server |
+
+### Project Features
+
+### Stage 0: Supabase & Server Setup
+
+- Created a Supabase project.
+- Configured environment variables using `.env`.
+- Initialized the Supabase client.
+- Configured the FastAPI server.
+- Prepared the backend for authentication integration.
+
+### Stage 1: User Authentication
+
+Implemented the following authentication endpoints:
+
+| Method | Endpoint | Description | Status Codes |
+|---|---|---|---|
+| POST | `/auth/signup` | Register a new user | `200 / 201 / 4xx` |
+| POST | `/auth/login` | Log in an existing user | `200 / 4xx` |
+
+Features:
+
+- Email and password validation.
+- User registration with Supabase.
+- Login with Supabase.
+- Access token and refresh token generation.
+- Appropriate HTTP error responses.
+
+### Stage 2: Public & Protected Routes
+
+Implemented public and protected endpoints.
+
+| Method | Endpoint | Access |
+|---|---|---|
+| GET | `/public/info` | Public |
+| GET | `/protected/profile` | Protected |
+
+Public endpoints can be accessed without authentication, while protected endpoints require a valid JWT access token.
+
+### Stage 3: JWT Token Verification
+
+Implemented JWT authentication using Supabase.
+
+Features:
+
+- Extracted JWT tokens from the Authorization header.
+- Verified access tokens using Supabase.
+- Rejected invalid or expired tokens.
+- Retrieved authenticated user information.
+- Returned user ID, email, and account creation date.
+
+### Stage 4: Middleware & Logout
+
+Implemented reusable authentication using FastAPI dependencies.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/auth/logout` | Protected | Log out the authenticated user |
+| GET | `/protected/profile` | Protected | Retrieve authenticated user information |
+| GET | `/protected/dashboard` | Protected | Access the protected dashboard |
+
+Features:
+
+- Reusable `get_current_user` dependency.
+- HTTP Bearer token authentication.
+- Supabase token verification.
+- Protected dashboard.
+- Logout endpoint returning HTTP `204 No Content`.
+
+### Stage 5: Swagger UI Documentation
+
+Configured FastAPI HTTP Bearer authentication for interactive API documentation.
+
+Features:
+
+- Automatic Swagger UI documentation.
+- Authorize button for JWT authentication.
+- Lock icons for protected endpoints.
+- Ability to test protected endpoints directly from Swagger UI.
+- Reuse of JWT access tokens across protected routes.
+
+### Swagger UI Screenshot
+
+The following screenshot demonstrates Swagger UI with Bearer authentication configured.
+
+![Authentication](./images/swagger-auth.png)
+
+
+### API Documentation
+
+After starting the server, access the interactive Swagger documentation:
+
+- Swagger UI: http://localhost:3000/docs
+- ReDoc: http://localhost:3000/redoc
+- OpenAPI JSON: http://localhost:3000/openapi.json 
