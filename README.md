@@ -945,3 +945,5 @@ After starting the server, access the interactive Swagger documentation:
 - Swagger UI: http://localhost:3000/docs
 - ReDoc: http://localhost:3000/redoc
 - OpenAPI JSON: http://localhost:3000/openapi.json 
+
+### Stage 6: Publish project to GitHub and write README.
