@@ -1,4 +1,6 @@
-
+import re
+from urllib.parse import urlparse
+from pydantic import BaseModel
 from pathlib import Path
 from urllib.parse import urljoin
 import time
@@ -23,6 +25,24 @@ HEADERS = {
 }
 TIMEOUT = 10
 REQUEST_DELAY = 0.5
+
+
+# ---------------------------------
+# STAGE 4: DATA SCHEMA
+# ---------------------------------
+
+class BookRecord(BaseModel):
+    title: str
+    product_url: str
+    price_text: str
+    price_gbp: float
+    availability_text: str
+    rating_text: str
+    rating: int
+    description: str | None = None
+    source_page: str
+    fetched_at: str
+
 # ---------------------------------
 # 2. PROJECT PATHS
 # ---------------------------------
@@ -305,41 +325,174 @@ def extract_book_record(product_url, source_page):
 
     return record
 
+# ---------------------------------
+# NORMALIZE RAW BOOK DATA
+# ---------------------------------
+
+def normalize_book(raw):
+
+    # Convert "£51.77" into 51.77
+    price_string = raw["price_text"].replace("£", "").replace(",", "").strip()
+    price_gbp = float(price_string)
+
+    # Convert rating words into numbers
+    rating_mapping = {
+        "One": 1,
+        "Two": 2,
+        "Three": 3,
+        "Four": 4,
+        "Five": 5
+    }
+
+    rating = rating_mapping.get(raw["rating_text"])
+
+    if rating is None:
+        raise ValueError(
+            f"Unknown book rating: {raw['rating_text']}"
+        )
+
+    return {
+        **raw,
+        "price_gbp": price_gbp,
+        "rating": rating
+    }
+
+
+# ---------------------------------
+# VALIDATE BOOK DATA
+# ---------------------------------
+
+def validate_book(data):
+
+    # Check that URLs are absolute HTTPS URLs
+    for field in ["product_url", "source_page"]:
+        value = data[field]
+        parsed = urlparse(value)
+
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError(
+                f"{field} must be an absolute HTTPS URL"
+            )
+
+    # Validate data against the Pydantic schema
+    return BookRecord(**data)
+
+
+# ---------------------------------
+# SAVE JSON OUTPUT
+# ---------------------------------
+
+OUTPUT_DIR = PROJECT_DIR / "output"
+
+
+def save_results(valid_records, errors):
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    books_file = OUTPUT_DIR / "books.json"
+    errors_file = OUTPUT_DIR / "errors.json"
+
+    # Save valid records
+    books_file.write_text(
+        json.dumps(
+            valid_records,
+            indent=4,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+    # Save failed records and their reasons
+    errors_file.write_text(
+        json.dumps(
+            errors,
+            indent=4,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+    print(f"\nSaved valid records: {len(valid_records)}")
+    print(f"Saved errors: {len(errors)}")
+    print(f"Output directory: {OUTPUT_DIR}")
 
 # ---------------------------------
 # 7. PROCESS ALL 60 BOOKS
+# ---------------------------------
+
+
+# ---------------------------------
+# PROCESS, NORMALIZE AND VALIDATE
 # ---------------------------------
 
 def extract_all_books():
 
     discovered_books = discover_catalogue()
 
-    records = []
+    valid_records = []
+    errors = []
+
+    # Track canonical product URLs to prevent duplicates
+    seen_urls = set()
 
     for index, (product_url, source_page) in enumerate(
         discovered_books, start=1
     ):
 
-        print(f"Processing book {index}/{len(discovered_books)}")
-
-        record = extract_book_record(
-            product_url,
-            source_page
+        print(
+            f"Processing book {index}/{len(discovered_books)}"
         )
 
-        if record is not None:
-            records.append(record)
+        # Remove duplicate products
+        if product_url in seen_urls:
+            continue
 
-    # Print one complete raw record
-    print("\n--- Sample Raw Record ---")
+        seen_urls.add(product_url)
 
-    if records:
-        print(json.dumps(records[0], indent=4, ensure_ascii=False))
-    else:
-        print("No valid book records extracted.")
+        try:
+            # Stage 3: Extract raw record
+            raw = extract_book_record(
+                product_url,
+                source_page
+            )
 
-    print("\n--- Detail Extraction Report ---")
-    print(f"detail_pages={len(records)}")
+            if raw is None:
+                raise ValueError("Could not extract book details")
+
+            # Stage 4: Normalize raw values
+            normalized = normalize_book(raw)
+
+            # Stage 4: Validate against schema
+            validated = validate_book(normalized)
+
+            # Convert Pydantic model to dictionary
+            valid_records.append(validated.dict())
+
+        except Exception as error:
+
+            errors.append({
+                "product_url": product_url,
+                "reason": str(error)
+            })
+
+    # Save the results
+    save_results(valid_records, errors)
+
+    print("\n--- Final Validation Report ---")
+    print(f"total_records={len(valid_records)}")
+    print(f"failed_records={len(errors)}")
+    print(f"unique_records={len(valid_records)}")
+
+    # Print one complete record
+    if valid_records:
+        print("\n--- Sample Valid Record ---")
+        print(
+            json.dumps(
+                valid_records[0],
+                indent=4,
+                ensure_ascii=False
+            )
+        )
 
 
 # ---------------------------------

@@ -24,3 +24,5 @@ report.json
 # Scraped HTML cache
 cache/
 /cache/
+output/
+/output/
