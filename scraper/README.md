@@ -58,3 +58,48 @@ scraper/
 ├── .gitignore
 └── src/
     └── main.py
+
+
+## Stage 1 — Fetch and Cache HTML
+
+Used Python Requests to download the first catalogue page.
+
+- Added a custom `User-Agent` and a 10-second request timeout.
+- Checked the HTTP status code before processing the response.
+- Saved the HTML locally in `cache/catalogue-page-1.html`.
+- Implemented caching to avoid repeated website requests.
+
+### Checkpoint Results
+
+| Metric | Result |
+|---|---|
+| First run | FETCH |
+| Second run | CACHE HIT |
+| Response size | 51,294 bytes |
+
+---
+
+## Stage 2 — Discover Three Catalogue Pages
+
+- Used Beautiful Soup to parse catalogue HTML.
+- Extracted book links using CSS selectors.
+- Converted relative URLs into absolute URLs using `urljoin()`.
+- Followed the website's Next link to discover pages 2 and 3.
+- Added a 0.5-second delay before real network requests.
+- Cached all three catalogue pages.
+- Removed duplicate URLs while preserving order.
+
+### Checkpoint Results
+
+| Metric | Result |
+|---|---:|
+| Catalogue pages | 3 |
+| Discovered books | 60 |
+| Unique URLs | 60 |
+| Books per page | 20 |
+
+### Cache Verification
+
+The second run loaded all three catalogue pages from cache and produced the same results without making repeated website requests.
+
+---    
