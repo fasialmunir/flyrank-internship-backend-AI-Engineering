@@ -1,12 +1,11 @@
+
 # Polite Scraper — FlyRank Internship
 
 ## Project Overview
 
-A Python web scraping project for **FlyRank Backend Internship — Week 5, Assignment A9**.
+A Python web scraping pipeline built for FlyRank Backend Internship, Week 5, Assignment A9.
 
-It collects, cleans, validates, and stores book data as JSON.
-
----
+The scraper collects 60 books from the Books to Scrape practice website, extracts book information, normalizes and validates records, and saves the results as JSON.
 
 ## Target Classification
 
@@ -14,30 +13,10 @@ It collects, cleans, validates, and stores book data as JSON.
 - **Website Information:** https://toscrape.com/
 - **Purpose:** Books to Scrape is a practice sandbox designed for learning and testing web scraping.
 - **Scope:** First 3 catalogue pages (60 books).
-## Sample Book Data
+- **Data Collected:** Title, price, availability, rating, description, book URL, and image URL.
+- **Robots.txt:** HTTP 404 Not Found (no robots file found).
 
-| Field | Value |
-|---|---|
-| Title | A Light in the Attic |
-| Price | £51.77 |
-| Availability | In stock (22 available) |
-| Rating | 3 Star |
-| Book URL | [View Book](https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html) |
-| Image URL | [View Image](https://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg) |
-
----
-
-## Robots.txt Check
-
-- **URL:** https://books.toscrape.com/robots.txt
-- **Result:** HTTP 404 Not Found.
-- **Finding:** No robots file found.
-
-No robots.txt file is not treated as permission by itself.
-
-**Responsible Scraping:** I will not reuse this code on another site without checking its rules and terms first.
-
----
+I will not reuse this code on another site without checking its rules and terms first.
 
 ## Technology Stack
 
@@ -45,159 +24,140 @@ No robots.txt file is not treated as permission by itself.
 - Requests
 - Beautiful Soup
 - Pydantic
-- JSON
+- Built-in JSON module
 - Git and GitHub
-
----
 
 ## Project Structure
 
 ```text
 scraper/
-├── README.md
+├── cache/
+├── output/
+│   ├── books.json
+│   ├── errors.json
+│   └── run-report.json
+├── src/
+│   └── main.py
 ├── .gitignore
-└── src/
-    └── main.py
-
+├── requirements.txt
+└── README.md
 ```
-## Stage 1 — Fetch and Cache HTML
 
-Used Python Requests to download the first catalogue page.
+## Installation and Usage
 
-- Added a custom `User-Agent` and a 10-second request timeout.
-- Checked the HTTP status code before processing the response.
-- Saved the HTML locally in `cache/catalogue-page-1.html`.
-- Implemented caching to avoid repeated website requests.
+### 1. Clone the Repository
 
-### Checkpoint Results
+```bash
+git https://github.com/fasialmunir/flyrank-internship-backend-AI-Engineering
+cd flyrank-internship-backend-AI-Engineering/scraper
+```
 
-| Metric | Result |
+### 2. Create and Activate a Virtual Environment
+
+Windows:
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Run the Scraper
+
+```bash
+python src/main.py
+```
+
+The scraper generates the following files:
+
+- `output/books.json`
+- `output/errors.json`
+- `output/run-report.json`
+
+## Record Schema
+
+Each validated book record contains:
+
+| Field | Type |
 |---|---|
-| First run | FETCH |
-| Second run | CACHE HIT |
-| Response size | 51,294 bytes |
+| `title` | string |
+| `product_url` | string |
+| `price_text` | string |
+| `price_gbp` | float |
+| `availability_text` | string |
+| `rating_text` | string |
+| `rating` | integer |
+| `description` | string or null |
+| `source_page` | string |
+| `fetched_at` | string (UTC) |
+
+## Responsible Scraping
+
+- Uses an identifying User-Agent.
+- Sets a 10-second request timeout.
+- Waits at least 0.5 seconds between real requests.
+- Caches downloaded HTML to avoid unnecessary requests.
+- Retries temporary timeouts and HTTP 5xx errors once.
+- Does not retry HTTP 403 or 404.
+- Validates records before storing them.
+- Logs failed pages instead of stopping the entire run.
+
+## Validation and Run Evidence
+
+The following is a real run report from the project:
+
+### Run Report
+
+```json
+{
+    "started_at": "2026-11-14T08:43:06Z",
+    "duration_seconds": 1.52,
+    "pages_fetched": 0,
+    "cache_hits": 63,
+    "valid_records": 60,
+    "invalid_records": 0,
+    "failed_pages": 0
+}
+```
+
+### Results
+
+- **Catalogue pages:** 3
+- **Unique books:** 60
+- **Valid records:** 60
+- **Invalid records:** 0
+- **Failed pages:** 0
+
+The report shows that all 63 successful page loads came from cache during this run.
+
+## Why No Browser Was Needed
+
+The required book information is already available in the HTML returned by the server. A browser would only add unnecessary complexity and cost.
+
+## Ethical Considerations
+
+- Use an official API whenever one is available.
+- Never bypass logins, paywalls, or access restrictions.
+- Collect only the data needed for the task.
+- Respect the website's rules and terms.
+
+## Limitation
+
+The scraper is designed specifically for the Books to Scrape practice website. Changes to its HTML structure or CSS selectors may require code updates.
+
+## Internship Progress
+
+-  Stage 0: Target classification
+-  Stage 1: Fetch and cache HTML
+-  Stage 2: Discover three catalogue pages
+-  Stage 3: Extract raw book records
+-  Stage 4: Normalize and validate records
+-  Stage 5: Handle failures and generate reports
+-  Stage 6: Publish project and evidence
 
 ---
-
-## Stage 2 — Discover Three Catalogue Pages
-
-- Used Beautiful Soup to parse catalogue HTML.
-- Extracted book links using CSS selectors.
-- Converted relative URLs into absolute URLs using `urljoin()`.
-- Followed the website's Next link to discover pages 2 and 3.
-- Added a 0.5-second delay before real network requests.
-- Cached all three catalogue pages.
-- Removed duplicate URLs while preserving order.
-
-### Checkpoint Results
-
-| Metric | Result |
-|---|---:|
-| Catalogue pages | 3 |
-| Discovered books | 60 |
-| Unique URLs | 60 |
-| Books per page | 20 |
-
-### Cache Verification
-
-The second run loaded all three catalogue pages from cache and produced the same results without making repeated website requests.
-
----
-
-## Stage 3 — Extract Raw Book Records
-
-Used Beautiful Soup to extract information from all 60 individual book pages.
-
-- Collected eight raw fields:
-  - Title
-  - Product URL
-  - Price
-  - Availability
-  - Rating
-  - Description
-  - Source page
-  - Fetch timestamp
-- Targeted the product information section using CSS selectors.
-- Cached each book's HTML to avoid repeated requests.
-- Used a custom `User-Agent`, request timeout, and 0.5-second delay.
-- Stored missing descriptions as `null`.
-- Preserved `source_page` and `fetched_at` as data provenance.
-
-### Checkpoint Results
-
-| Metric | Result |
-|---|---:|
-| Individual detail pages processed | 60 |
-| Complete raw records printed | 1 |
-| Cached pages reused | Yes |
-
-### Cache Verification
-
-Cached individual book pages were reused on subsequent runs to avoid unnecessary network requests.
-
----
-
-## Stage 4 — Normalize, Validate and Store Data
-
-- Installed and used Pydantic to define the book record schema.
-- Converted price text (e.g., `£51.77`) into a numeric `price_gbp` value.
-- Converted star ratings into integers (1–5).
-- Preserved original raw values alongside normalized values.
-- Validated records before storing them.
-- Used absolute HTTPS URLs for product identity.
-- Saved valid records to `output/books.json`.
-- Saved invalid records and error reasons to `output/errors.json`.
-- Removed duplicate product URLs to ensure idempotent runs.
-
-### Checkpoint Results
-
-| Metric | Expected Result |
-|---|---:|
-| Valid records | 60 |
-| Duplicate records | 0 |
-| Records after second run | 60 |
-
-### Validation and Storage Verification
-
-All records are validated before storage. Duplicate product URLs are removed to ensure that repeated runs do not create duplicate records.
-
-The second run should still contain exactly 60 valid records.
-
----
-
-## Stage 5 — Failure Handling and Run Reporting
-
-- Added error handling to process each book page independently.
-- Implemented one retry for request timeouts and HTTP 5xx errors.
-- Avoided retries for HTTP 403 and 404 responses.
-- Logged failed pages without stopping the scraper.
-- Generated `output/run-report.json` containing:
-  - Start time
-  - Duration
-  - Cache hits
-  - Pages fetched
-  - Valid records
-  - Invalid records
-  - Failed pages
-- Tested failure handling using a fake URL (`example.invalid`).
-- Removed the fake URL after successfully testing failure handling.
-
-### Checkpoint Results
-
-| Metric | Result |
-|---|---:|
-| Valid records | 60 |
-| Failed pages during test | 1 |
-| Invalid records | 0 |
-| Cache hits | 63 |
-| Run report generated | Successfully |
-
-### Failure Handling Verification
-
-The scraper continued processing all valid books despite the simulated failure.
-
-The failed page was logged without interrupting the scraping process.
-
----
-
-    
