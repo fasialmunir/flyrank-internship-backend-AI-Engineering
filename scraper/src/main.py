@@ -1,3 +1,4 @@
+import csv
 import re
 from urllib.parse import urlparse
 from pydantic import BaseModel
@@ -511,6 +512,29 @@ def save_run_report(start_time, start_timestamp):
     print("\n--- RUN REPORT ---")
     print(json.dumps(report, indent=4))
 
+# ---------------------------------
+# EXTRA: CSV EXPORT
+# ---------------------------------
+
+def export_to_csv(records):
+
+    csv_file = OUTPUT_DIR / "books.csv"
+
+    if not records:
+        print("No valid records available for CSV export.")
+        return
+
+    with csv_file.open("w", newline="", encoding="utf-8-sig") as file:
+
+        writer = csv.DictWriter(
+            file,
+            fieldnames=records[0].keys()
+        )
+
+        writer.writeheader()
+        writer.writerows(records)
+
+    print(f"CSV exported successfully: {csv_file}")
 
 # ---------------------------------
 # PROCESS, NORMALIZE AND VALIDATE
@@ -588,6 +612,7 @@ def extract_all_books():
         RUN_STATS["valid_records"] = len(valid_records)
 
         save_results(valid_records, errors)
+        export_to_csv(valid_records)
 
     finally:
         # Report must be written even if processing raises an error

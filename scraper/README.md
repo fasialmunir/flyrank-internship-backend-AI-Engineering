@@ -161,3 +161,11 @@ The scraper is designed specifically for the Books to Scrape practice website. C
 -  Stage 6: Publish project and evidence
 
 ---
+## Optional Extra — CSV Export
+
+- Added CSV export using Python's built-in `csv` module.
+- Converted validated book records into a CSV file.
+- Saved the exported data as `output/books.csv`.
+- Preserved all validated record fields for easy use in spreadsheet applications.
+
+**Result:** Successfully generates both JSON and CSV output formats.
