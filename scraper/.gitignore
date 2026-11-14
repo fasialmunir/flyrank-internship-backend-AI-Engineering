@@ -20,3 +20,7 @@ Thumbs.db
 # Generated data
 books.json
 report.json
+
+# Scraped HTML cache
+cache/
+/cache/
