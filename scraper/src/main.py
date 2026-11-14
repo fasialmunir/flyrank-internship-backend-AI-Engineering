@@ -44,6 +44,17 @@ class BookRecord(BaseModel):
     fetched_at: str
 
 # ---------------------------------
+# STAGE 5: RUN TRACKING
+# ---------------------------------
+
+RUN_STATS = {
+    "pages_fetched": 0,
+    "cache_hits": 0,
+    "valid_records": 0,
+    "invalid_records": 0,
+    "failed_pages": 0
+}
+# ---------------------------------
 # 2. PROJECT PATHS
 # ---------------------------------
 
@@ -54,20 +65,26 @@ CACHE_DIR = PROJECT_DIR / "cache"
 # 3. FETCH AND CACHE CATALOGUE
 # ---------------------------------
 
+
 def get_page_html(url, page_number):
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     cache_file = CACHE_DIR / f"catalogue-page-{page_number}.html"
 
+    # Check cache first
     if cache_file.exists():
+
         html = cache_file.read_bytes()
+
+        RUN_STATS["cache_hits"] += 1
 
         print(f"CACHE HIT: page {page_number}")
         print(f"Response size: {len(html)} bytes")
 
         return html
 
+    # Fetch from website
     print(f"FETCH: page {page_number}")
 
     time.sleep(REQUEST_DELAY)
@@ -81,17 +98,29 @@ def get_page_html(url, page_number):
 
         if response.status_code != 200:
             print(f"Fetch failed: HTTP {response.status_code}")
+            RUN_STATS["failed_pages"] += 1
             return None
 
         html = response.content
+
         cache_file.write_bytes(html)
 
+        # Update successful network request counter
+        RUN_STATS["pages_fetched"] += 1
+
         print(f"Response size: {len(html)} bytes")
+        print(f"Saved: {cache_file}")
 
         return html
 
+    except requests.Timeout as error:
+        print(f"Request timed out: {error}")
+        RUN_STATS["failed_pages"] += 1
+        return None
+
     except requests.RequestException as error:
         print(f"Request failed: {error}")
+        RUN_STATS["failed_pages"] += 1
         return None
 
 
@@ -180,9 +209,9 @@ def discover_catalogue():
 # 5. FETCH AND CACHE BOOK DETAILS
 # ---------------------------------
 
+
 def fetch_book_page(product_url):
 
-    # Generate a unique cache filename
     url_hash = hashlib.sha256(
         product_url.encode("utf-8")
     ).hexdigest()
@@ -190,7 +219,7 @@ def fetch_book_page(product_url):
     cache_file = CACHE_DIR / f"book-{url_hash}.html"
     metadata_file = CACHE_DIR / f"book-{url_hash}.json"
 
-    # Return cached HTML and original fetch time
+    # Check local cache first
     if cache_file.exists() and metadata_file.exists():
 
         html = cache_file.read_bytes()
@@ -199,49 +228,83 @@ def fetch_book_page(product_url):
             metadata_file.read_text(encoding="utf-8")
         )
 
+        RUN_STATS["cache_hits"] += 1
+
         return html, metadata["fetched_at"]
 
-    # Make a polite network request
-    time.sleep(REQUEST_DELAY)
+    # Try at most twice
+    for attempt in range(2):
 
-    try:
-        response = requests.get(
-            product_url,
-            headers=HEADERS,
-            timeout=TIMEOUT
-        )
+        if attempt == 0:
+            time.sleep(REQUEST_DELAY)
+        else:
+            print("Retrying once after temporary failure...")
+            time.sleep(1)
 
-        if response.status_code != 200:
-            print(
-                f"Book fetch failed: HTTP "
-                f"{response.status_code} - {product_url}"
+        try:
+            response = requests.get(
+                product_url,
+                headers=HEADERS,
+                timeout=TIMEOUT
             )
+
+            # Retry server errors once
+            if 500 <= response.status_code <= 599:
+
+                if attempt == 0:
+                    print(f"Server error: HTTP {response.status_code}")
+                    continue
+
+                print(f"Failed after retry: HTTP {response.status_code}")
+                RUN_STATS["failed_pages"] += 1
+                return None, None
+
+            # Do not retry 403 or 404
+            if response.status_code in (403, 404):
+                print(f"Page rejected or missing: HTTP {response.status_code}")
+                RUN_STATS["failed_pages"] += 1
+                return None, None
+
+            # Other unsuccessful responses
+            if response.status_code != 200:
+                print(f"Unexpected HTTP status: {response.status_code}")
+                RUN_STATS["failed_pages"] += 1
+                return None, None
+
+            html = response.content
+
+            fetched_at = (
+                datetime.now(timezone.utc)
+                .isoformat(timespec="seconds")
+                .replace("+00:00", "Z")
+            )
+
+            cache_file.write_bytes(html)
+
+            metadata_file.write_text(
+                json.dumps({"fetched_at": fetched_at}, indent=2),
+                encoding="utf-8"
+            )
+
+            RUN_STATS["pages_fetched"] += 1
+
+            return html, fetched_at
+
+        except requests.Timeout as error:
+
+            print(f"Request timed out: {error}")
+
+            if attempt == 1:
+                RUN_STATS["failed_pages"] += 1
+                return None, None
+
+        except requests.RequestException as error:
+
+            print(f"Request failed: {error}")
+            RUN_STATS["failed_pages"] += 1
             return None, None
 
-        html = response.content
-
-        # Record the actual fetch time in UTC
-        fetched_at = (
-            datetime.now(timezone.utc)
-            .isoformat(timespec="seconds")
-            .replace("+00:00", "Z")
-        )
-
-        # Save HTML and fetch-time metadata
-        cache_file.write_bytes(html)
-
-        metadata_file.write_text(
-            json.dumps({"fetched_at": fetched_at}, indent=2),
-            encoding="utf-8"
-        )
-
-        return html, fetched_at
-
-    except requests.RequestException as error:
-
-        print(f"Book request failed: {error}")
-
-        return None, None
+    return None, None
 
 
 # ---------------------------------
@@ -416,83 +479,119 @@ def save_results(valid_records, errors):
     print(f"Saved errors: {len(errors)}")
     print(f"Output directory: {OUTPUT_DIR}")
 
+ 
+
 # ---------------------------------
-# 7. PROCESS ALL 60 BOOKS
+# GENERATE RUN REPORT
 # ---------------------------------
+
+def save_run_report(start_time, start_timestamp):
+
+    duration = round(time.time() - start_time, 2)
+
+    report = {
+        "started_at": start_timestamp,
+        "duration_seconds": duration,
+        "pages_fetched": RUN_STATS["pages_fetched"],
+        "cache_hits": RUN_STATS["cache_hits"],
+        "valid_records": RUN_STATS["valid_records"],
+        "invalid_records": RUN_STATS["invalid_records"],
+        "failed_pages": RUN_STATS["failed_pages"]
+    }
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    report_file = OUTPUT_DIR / "run-report.json"
+
+    report_file.write_text(
+        json.dumps(report, indent=4),
+        encoding="utf-8"
+    )
+
+    print("\n--- RUN REPORT ---")
+    print(json.dumps(report, indent=4))
 
 
 # ---------------------------------
 # PROCESS, NORMALIZE AND VALIDATE
 # ---------------------------------
 
+
 def extract_all_books():
 
-    discovered_books = discover_catalogue()
+    start_time = time.time()
+
+    start_timestamp = (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
 
     valid_records = []
     errors = []
 
-    # Track canonical product URLs to prevent duplicates
-    seen_urls = set()
+    try:
+        discovered_books = discover_catalogue()
 
-    for index, (product_url, source_page) in enumerate(
-        discovered_books, start=1
-    ):
+        
 
-        print(
-            f"Processing book {index}/{len(discovered_books)}"
-        )
+        seen_urls = set()
 
-        # Remove duplicate products
-        if product_url in seen_urls:
-            continue
+        for index, (product_url, source_page) in enumerate(
+            discovered_books, start=1
+        ):
 
-        seen_urls.add(product_url)
+            print(f"Processing book {index}/{len(discovered_books)}")
 
-        try:
-            # Stage 3: Extract raw record
+            if product_url in seen_urls:
+                continue
+
+            seen_urls.add(product_url)
+
+            # Fetch and extract separately
             raw = extract_book_record(
                 product_url,
                 source_page
             )
 
+            # Failed page: log it and continue
             if raw is None:
-                raise ValueError("Could not extract book details")
 
-            # Stage 4: Normalize raw values
-            normalized = normalize_book(raw)
+                errors.append({
+                    "product_url": product_url,
+                    "reason": "Page fetch or extraction failed"
+                })
 
-            # Stage 4: Validate against schema
-            validated = validate_book(normalized)
+                continue
 
-            # Convert Pydantic model to dictionary
-            valid_records.append(validated.dict())
+            try:
+                normalized = normalize_book(raw)
 
-        except Exception as error:
+                validated = validate_book(normalized)
 
-            errors.append({
-                "product_url": product_url,
-                "reason": str(error)
-            })
+                valid_records.append(
+                    validated.model_dump()
+                    if hasattr(validated, "model_dump")
+                    else validated.dict()
+                )
 
-    # Save the results
-    save_results(valid_records, errors)
+            except Exception as error:
 
-    print("\n--- Final Validation Report ---")
-    print(f"total_records={len(valid_records)}")
-    print(f"failed_records={len(errors)}")
-    print(f"unique_records={len(valid_records)}")
+                RUN_STATS["invalid_records"] += 1
 
-    # Print one complete record
-    if valid_records:
-        print("\n--- Sample Valid Record ---")
-        print(
-            json.dumps(
-                valid_records[0],
-                indent=4,
-                ensure_ascii=False
-            )
-        )
+                errors.append({
+                    "product_url": product_url,
+                    "reason": str(error)
+                })
+
+        # Store results
+        RUN_STATS["valid_records"] = len(valid_records)
+
+        save_results(valid_records, errors)
+
+    finally:
+        # Report must be written even if processing raises an error
+        save_run_report(start_time, start_timestamp)
 
 
 # ---------------------------------
